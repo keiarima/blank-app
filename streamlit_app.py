@@ -16,7 +16,7 @@ geojson_path = "data/meiji_jingu_trees.geojson"
 # **ファイルがない場合、自動生成**
 if not os.path.exists(geojson_path):
     st.warning("🌱 植生データがありません。生成中...")
-    subprocess.run(["python", "utils/geojson_generator.py"])
+    subprocess.run(["python", "utils/geojson_generator.py"], check=True)
     st.success("✅ 植生データを作成しました！")
 
 # **Streamlitのレイアウトをフルスクリーンに設定**
@@ -40,14 +40,22 @@ st.title("🌳 明治神宮 植生マップ")
 
 # **植生データのランダム生成ボタン**
 if st.button("🌿 植生をランダムに変更"):
-    subprocess.run(["python", "utils/geojson_generator.py"])
+    subprocess.run(["python", "utils/geojson_generator.py"], check=True)
     st.success("🌿 植生がランダムに配置されました！")
+    
+    # **最新のデータを再読み込み**
+    with open(geojson_path, "r", encoding="utf-8") as file:
+        st.session_state["geojson_data"] = json.load(file)
+
+    # **ページを再読み込み**
+    st.rerun()  # ✅ 修正: `st.experimental_rerun()` → `st.rerun()`
 
 # **📥 GeoJSON ダウンロードボタン**
-with open(geojson_path, "r", encoding="utf-8") as file:
-    geojson_data = json.load(file)
+if "geojson_data" not in st.session_state:
+    with open(geojson_path, "r", encoding="utf-8") as file:
+        st.session_state["geojson_data"] = json.load(file)
 
-geojson_str = json.dumps(geojson_data, indent=4)
+geojson_str = json.dumps(st.session_state["geojson_data"], indent=4)
 st.download_button(
     label="📂 GeoJSON をダウンロード",
     data=geojson_str,
@@ -60,7 +68,7 @@ m = folium.Map(location=[35.675, 139.698], zoom_start=15)
 
 # **🌱 敷地のPolygonを表示**
 folium.GeoJson(
-    geojson_data,
+    st.session_state["geojson_data"],
     name="Meiji Jingu Area",
     tooltip=None,
     popup=None,
@@ -68,7 +76,7 @@ folium.GeoJson(
 ).add_to(m)
 
 # **🌲 木のアイコンを表示（FontAwesomeのTreeアイコンを使用）**
-for feature in geojson_data["features"]:
+for feature in st.session_state["geojson_data"]["features"]:
     if feature["geometry"]["type"] == "Point":
         lon, lat = feature["geometry"]["coordinates"]
         tree_type = feature["properties"]["tree_type"]
