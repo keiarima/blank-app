@@ -10,14 +10,18 @@ from streamlit_folium import st_folium
 if not os.path.exists("data"):
     os.makedirs("data")
 
-# **GeoJSONのファイルパス**
-geojson_path = "data/meiji_jingu_trees.geojson"
+# **GeoJSONのファイルパス（`trees.geojson` を使用しない）**
+geojson_path = "data/meiji_jingu_trees.geojson"  # ✅ ここを修正
 
 # **ファイルがない場合、自動生成**
 if not os.path.exists(geojson_path):
     st.warning("🌱 植生データがありません。生成中...")
-    subprocess.run(["python", "utils/geojson_generator.py"], check=True)
-    st.success("✅ 植生データを作成しました！")
+    result = subprocess.run(["python", "utils/geojson_generator.py"], capture_output=True, text=True)
+    if result.returncode == 0:
+        st.success("✅ 植生データを作成しました！")
+    else:
+        st.error("❌ GeoJSON の生成に失敗しました。エラーメッセージ：")
+        st.code(result.stderr)
 
 # **Streamlitのレイアウトをフルスクリーンに設定**
 st.set_page_config(layout="wide")
@@ -40,15 +44,19 @@ st.title("🌳 明治神宮 植生マップ")
 
 # **植生データのランダム生成ボタン**
 if st.button("🌿 植生をランダムに変更"):
-    subprocess.run(["python", "utils/geojson_generator.py"], check=True)
-    st.success("🌿 植生がランダムに配置されました！")
-    
-    # **最新のデータを再読み込み**
-    with open(geojson_path, "r", encoding="utf-8") as file:
-        st.session_state["geojson_data"] = json.load(file)
+    result = subprocess.run(["python", "utils/geojson_generator.py"], capture_output=True, text=True)
+    if result.returncode == 0:
+        st.success("🌿 植生がランダムに配置されました！")
+        
+        # **最新のデータを再読み込み**
+        with open(geojson_path, "r", encoding="utf-8") as file:
+            st.session_state["geojson_data"] = json.load(file)
 
-    # **ページを再読み込み**
-    st.rerun()  # ✅ 修正: `st.experimental_rerun()` → `st.rerun()`
+        # **ページを再読み込み**
+        st.rerun()
+    else:
+        st.error("❌ 植生のランダム化に失敗しました。エラーメッセージ：")
+        st.code(result.stderr)
 
 # **📥 GeoJSON ダウンロードボタン**
 if "geojson_data" not in st.session_state:
