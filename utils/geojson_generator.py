@@ -1,8 +1,16 @@
 import json
 import random
+import os
 from shapely.geometry import Polygon, Point
 
-# Polygonの範囲
+# **フォルダを作成**
+output_dir = "data"
+output_file = os.path.join(output_dir, "meiji_jingu_trees.geojson")
+
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# **明治神宮の敷地（Polygon）**
 polygon_coords = [
     (139.6950, 35.6782), (139.6953, 35.6752), (139.6954, 35.6745), (139.6974, 35.6720),
     (139.6983, 35.6715), (139.7000, 35.6710), (139.7008, 35.6697), (139.7016, 35.6691),
@@ -14,25 +22,25 @@ polygon_coords = [
 ]
 polygon = Polygon(polygon_coords)
 
-# GeoJSONデータ
+# **GeoJSONデータの初期化**
 geojson_data = {"type": "FeatureCollection", "features": []}
 
-# Polygon追加
+# **Polygonデータ（敷地）を追加**
 geojson_data["features"].append({
     "type": "Feature",
     "geometry": {"type": "Polygon", "coordinates": [polygon_coords]},
-    "properties": {"tree_density": 60, "tree_type": "mixed"}
+    "properties": {"name": "明治神宮"}
 })
 
-# 木の種類
-tree_types = [("oak", "green"), ("pine", "brown")]
+# **木の種類**
+tree_types = [("oak", "green", 30), ("pine", "brown", 30)]
 
-# 各30本ずつランダム配置
-for tree_type, color in tree_types:
+# **木をランダムに配置**
+for tree_type, color, num_trees in tree_types:
     count = 0
-    while count < 30:
-        lon = random.uniform(139.695, 139.703)
-        lat = random.uniform(35.669, 35.680)
+    while count < num_trees:
+        lon = random.uniform(min([p[0] for p in polygon_coords]), max([p[0] for p in polygon_coords]))
+        lat = random.uniform(min([p[1] for p in polygon_coords]), max([p[1] for p in polygon_coords]))
         point = Point(lon, lat)
 
         if polygon.contains(point):
@@ -43,8 +51,8 @@ for tree_type, color in tree_types:
             })
             count += 1
 
-# JSONファイルに書き出し
-with open("data/trees.geojson", "w", encoding="utf-8") as f:
+# **ファイルに保存**
+with open(output_file, "w", encoding="utf-8") as f:
     json.dump(geojson_data, f, indent=4)
 
-print("GeoJSONファイルを生成しました！")
+print(f"✅ GeoJSONファイルを作成しました: {output_file}")
